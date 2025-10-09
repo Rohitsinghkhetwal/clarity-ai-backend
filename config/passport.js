@@ -4,12 +4,18 @@ import GithubStrategy from "passport-github2";
 
 import userModel from "../models/user.model.js";
 import { CallbackUrl } from "@deepgram/sdk";
+import dotenv from "dotenv"
+
+dotenv.config({
+  path: './config.env'
+})
 
 //serialize user
 
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
+
 
 passport.deserializeUser(async (id, done) => {
   try {

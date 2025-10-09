@@ -7,6 +7,7 @@ import morgan from "morgan"
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv"
 import connectDB from './config/database.js'
+import router from "./routes/auth.routes.js";
 dotenv.config({
   path:'./config.env'
 })
@@ -47,6 +48,8 @@ const limiter = rateLimit({
 app.use('/api/', limiter)
 
 //Routes
+app.use("/api/v1",router)
+
 
 //health check
 app.get('/health', (req, res) => {
