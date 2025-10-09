@@ -1,0 +1,39 @@
+{
+  "name": "ai-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@deepgram/sdk": "^4.11.2",
+    "aws-sdk": "^2.1692.0",
+    "axios": "^1.12.2",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.1",
+    "morgan": "^1.10.1",
+    "openai": "^6.2.0",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-linkedin-oauth2": "^2.0.0",
+    "redis": "^5.8.3",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/passport-github2": "^1.2.9",
+    "@types/passport-google-oauth20": "^2.0.16"
+  }
+}
