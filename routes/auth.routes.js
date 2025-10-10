@@ -1,7 +1,10 @@
 import express from "express"
 import passport from "../config/passport.js"
+import { oauthCallback , getme, protect } from "../controller/auth.controller.js"
 
 const router = express.Router()
+
+router.get('/me', protect, getme);
 
 router.get('/google', passport.authenticate('google', {
   scope: ['profile', 'email'],
@@ -10,6 +13,7 @@ router.get('/google', passport.authenticate('google', {
 
 router.get('/google/callback', passport.authenticate('google', {session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed}`}),
 // you have to add callback function here
+oauthCallback
 
 )
 
@@ -24,6 +28,7 @@ router.get('/github',
 router.get('/github/callback',
   passport.authenticate('github', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed` }),
   // authController.oauthCallback
+  oauthCallback
 );
 
 export default router
