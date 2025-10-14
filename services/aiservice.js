@@ -1,10 +1,17 @@
-import OpenAI from "openai";
+import Groq from "groq-sdk";
+import dotenv from "dotenv"
+
+dotenv.config({
+  path: './config.env'
+})
+
 
 class AIServices {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPEN_AI_API_KEY,
+    this.groq = new Groq({
+      apiKey: process.env.GROQ_SECRET_KEY,
     });
+    console.log("groq initiated success !")
   }
 
   async generateQuestion(role, previousQuestions, userProfiles) {
@@ -20,20 +27,20 @@ class AIServices {
 
     Return only the question text , nothing else `;
 
-    const response = await this.openai.chat.completions.create({
-      model: "gpt-4",
+    const response = await this.groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
       messages: [
         { role: "system", content: "You are expert technical interviewer." },
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_completion_tokens: 150,
+      max_tokens: 200,
     });
 
     return response.choices[0].message.content.trim();
   }
 
-  //analyze answer quality
+  
   async analyzeAnswer(question, userAnswer, idealAnswer) {
     const prompt = `Analyze this interview answer:
     Question: ${question}
@@ -51,7 +58,7 @@ class AIServices {
     Return ONLY valid JSON, no other text.`;
 
     const response = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: "llama-3.1-8b-instant",
       messages: [
         {
           role: "system",
@@ -61,7 +68,7 @@ class AIServices {
         { role: "user", content: prompt },
       ],
       temperature: 0.3,
-      response_format: {type: 'json_object'}
+      max_completion_tokens: 1024
     });
     return JSON.parse(response.choices[0].message.content);
   }

@@ -1,6 +1,12 @@
 import axios from "axios";
 import fs from "fs"
 import path from "path";
+import { fileURLToPath } from "url";
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 class TTS_Service {
   constructor() {
@@ -29,9 +35,21 @@ class TTS_Service {
         }
       )
 
-      const fileName = `question_${sessionId}_${Date.now()}.mp3`;
-      const filepath = path.join(__dirname, './temp', fileName)
+      // console.log("text inside the genreeate speech", response.data)
+      // console.log('sessionId-=-=-=-=-=-=-', sessionId)
 
+      const tempDir = path.join(__dirname, "../temp");
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+        console.log("Created temp directory:", tempDir);
+      }
+
+
+      const fileName = `question_${sessionId}_${Date.now()}.mp3`;
+      const filepath = path.join(tempDir, fileName)
+      console.log('file name ', fileName)
+      console.log("file path=======================?", filepath)
+   
       fs.writeFileSync(filepath, response.data);
 
       return {

@@ -1,34 +1,44 @@
-import express from "express"
-import passport from "../config/passport.js"
-import { oauthCallback , getme, protect } from "../controller/auth.controller.js"
+import express from 'express';
+import passport from 'passport';
+import { oauthCallback, getMe, protect, logout } from "../controller/auth.controller.js"
 
-const router = express.Router()
+const router = express.Router();
 
-router.get('/me', protect, getme);
-
-router.get('/google', passport.authenticate('google', {
-  scope: ['profile', 'email'],
-  session: false
-}))
-
-router.get('/google/callback', passport.authenticate('google', {session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed}`}),
-// you have to add callback function here
-oauthCallback
-
-)
-
-// git hub auth 
-router.get('/github',
-  passport.authenticate('github', { 
-    scope: ['user:email'],
-    session: false 
+// Google OAuth Routes
+router.get(
+  '/google',
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'] 
   })
 );
 
-router.get('/github/callback',
-  passport.authenticate('github', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed` }),
-  // authController.oauthCallback
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { 
+    failureRedirect: `${process.env.FRONTEND_URL}/signup?error=auth_failed`,
+    session: false 
+  }),
   oauthCallback
 );
 
-export default router
+router.get(
+  '/github',
+  passport.authenticate('github', { 
+    scope: ['user:email'] 
+  })
+);
+
+router.get(
+  '/github/callback',
+  passport.authenticate('github', { 
+    failureRedirect: `${process.env.FRONTEND_URL}/signup?error=auth_failed`,
+    session: false
+  }),
+  oauthCallback
+);
+
+// Protected Routes
+router.get('/me', protect, getMe);
+router.post('/logout', protect, logout);
+
+export default router;

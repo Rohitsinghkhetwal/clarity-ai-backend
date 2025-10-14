@@ -1,6 +1,7 @@
 import { createClient } from "@deepgram/sdk";
 
 
+
  class STTService {
   constructor() {
     this.deepgram = createClient(process.env.DEEP_GRAM_KEY)

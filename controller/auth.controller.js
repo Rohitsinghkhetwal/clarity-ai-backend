@@ -1,100 +1,109 @@
 import userModel from "../models/user.model.js";
-import jwt from 'jsonwebtoken'
+import jwt from 'jsonwebtoken';
 
-const genrerateToken = (userId) => {
-  return jwt.sign({id: userId}, process.env.JWT_SECRET, {
+const generateToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: '7d'
-  }) 
-}
+  });
+};
 
 
-const oauthCallback = async(req, res) => {
+const oauthCallback = async (req, res) => {
+
+  console.log("Oauth callback controller ")
+  console.log("use from passprt")
   try {
     const user = req.user;
+    
+    if (!user) {
+      console.log("✅ No User")
+      return res.redirect(`${process.env.FRONTEND_URL}/signup?error=auth_failed`);
+    }
 
-    const token = genrerateToken(user._id)
+    const token = generateToken(user._id);
 
-    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}-&user=${encodeURIComponent(JSON.stringify({
+    const userData = {
       id: user._id,
       email: user.email,
-      name:user.profile.name,
+      name: user.profile.name,
       avatar: user.profile.avatar,
-      oauthProvider:user.oauthProvider
-  }))}`)
-  }catch(err) {
-    console.error("oauth callback error", err)
-    res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`)
-  }
-}
+      oauthProvider: user.oauthProvider
+    };
 
-const getme = async (req, res) => {
-  try{
-    const user = await userModel.findById(req.user._id).select('-password')
+  
+    res.redirect(
+      `${process.env.FRONTEND_URL}/auth/callback?token=${token}&user=${encodeURIComponent(
+        JSON.stringify(userData)
+      )}`
+    );
+  } catch (err) {
+    console.error("OAuth callback error:", err);
+    res.redirect(`${process.env.FRONTEND_URL}/signup?error=auth_failed`);
+  }
+};
+
+const getMe = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.user._id).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     res.json({
-      user:{
-        id:user_id,
+      user: {
+        id: user._id,
         email: user.email,
         name: user.profile.name,
         avatar: user.profile.avatar,
         targetRole: user.profile.targetRole,
         experienceLevel: user.profile.experienceLevel,
         oauthProvider: user.oauthProvider,
-        isEmailVarified:user.isEmailvarified
+        isEmailVerified: user.isEmailVerified
       }
-    })
-
-  }catch(err){
-    res.status(500).json({message: "Error Fetching users"})
+    });
+  } catch (err) {
+    console.error("Get me error:", err);
+    res.status(500).json({ message: "Error fetching user" });
   }
-}
+};
 
-const protect = async(req, res, next) => {
+// Protect Middleware
+const protect = async (req, res, next) => {
   try {
     let token;
-    if(req.headers.authorization?.startsWith('Bearer')) {
-      token = req.headers.authorization.split('')[1]
+
+    if (req.headers.authorization?.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1]; // Fixed: was split('')[1]
     }
 
-    if(!token) {
-      return res.status(401).json({message: "User not authorized"})
+    if (!token) {
+      return res.status(401).json({ message: "Not authorized, no token" });
     }
 
+  
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await userModel.findById(decoded.id).select('-password')
+    
+    req.user = await userModel.findById(decoded.id).select('-password');
 
-    if(!req.user) {
-      return res.status(401).json({message: "User not found "})
+    if (!req.user) {
+      return res.status(401).json({ message: "User not found" });
     }
 
-    next()
-
-  } catch(err) {
-    res.status(401).json({message: "No authorized User"})
+    next();
+  } catch (err) {
+    console.error("Auth middleware error:", err);
+    res.status(401).json({ message: "Not authorized, invalid token" });
   }
-}
+};
 
-export {oauthCallback,getme, protect }
+const logout = async (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ message: "Logout failed" });
+    }
+    res.json({ message: "Logged out successfully" });
+  });
+};
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+export { oauthCallback, getMe, protect, logout };

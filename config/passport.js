@@ -1,9 +1,7 @@
-import passport from "passport";
-import GoogleStrategy from "passport-google-oauth20";
-import GithubStrategy from "passport-github2";
-
-import userModel from "../models/user.model.js";
-import { CallbackUrl } from "@deepgram/sdk";
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as GitHubStrategy } from 'passport-github2';
+import userModel from '../models/user.model.js';
 import dotenv from "dotenv"
 
 dotenv.config({
@@ -12,6 +10,8 @@ dotenv.config({
 
 //serialize user
 
+// console.log("✅ INSIDE THE PASSPORT ",process.env.OAUTH_CLIENTID,process.env.OAUTH_SECRET,process.env.BACKEND_URL)
+
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
@@ -19,7 +19,7 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = userModel.findById(id);
+    const user = await userModel.findById(id);
     done(null, user);
   } catch (err) {
     done(err, null);
@@ -31,14 +31,16 @@ passport.use(
     {
       clientID: process.env.OAUTH_CLIENTID,
       clientSecret: process.env.OAUTH_SECRET,
-      CallbackUrl: `${process.env.BACKEND_URL}/api/auth/google/callback`,
-      scope: ["profile", "email"],
+      callbackURL: `${process.env.BACKEND_URL}/api/auth/google/callback`,
+      passReqToCallback: false,
+      proxy: true
     },
     async (accesstoken, refreshToken, profile, done) => {
+      console.log("✅ INSIDE THE PASSPORT CALLBACK ")
       try {
         let user = await userModel.findOne({
           $or: [
-            { oauth: profile.id, oauthProvider: "google" },
+            { oauthId: profile.id, oauthProvider: "google" },
             { email: profile.emails[0].value },
           ],
         });
@@ -64,7 +66,7 @@ passport.use(
             },
             oauthProvider: "google",
             oauthId: profile.id,
-            oauthprofile: profile._json,
+            oauthProfile: profile._json,
             isEmailvarified: true,
             lastLogin: new Date(),
           });
@@ -78,11 +80,11 @@ passport.use(
 );
 
 passport.use(
-  new GithubStrategy(
+  new GitHubStrategy(
     {
-      clientID: process.env.GITHIB_CLIENTID,
+      clientID: process.env.GITHUB_CLIENTID,
       clientSecret: process.env.GITHUB_SECRETID,
-      CallbackUrl: `${process.env.BACKEND_URL}/api/auth/github/callback`,
+      callbackURL: `${process.env.BACKEND_URL}/api/auth/github/callback`,
       scope: ["user:email"],
     },
     async (accesstoken, refreshToken, profile, done) => {
