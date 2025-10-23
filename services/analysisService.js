@@ -7,12 +7,10 @@ class AnalysisService {
     try {
       const [
         qualityAnalysis,
-        sentimentAnalysis,
         fillerAnalysis,
         paceAnalysis
       ] = await Promise.all([
-        aiservice.analyzeAnswer(question.question, userAnswer, question.idealAnswer),
-        aiservice.analyzeSentiment(transcription),
+        aiservice.analyzeAnswer(question.questionText || question.question, userAnswer, question.idealAnswer),
         Promise.resolve(fillerdetector.detectFillers(transcription)),
         Promise.resolve(speechAnalizer.analyzePace(
           transcription,
@@ -24,8 +22,8 @@ class AnalysisService {
         relevanceScore: qualityAnalysis.relevanceScore,
         technicalAccuracy: qualityAnalysis.technicalAccuracy,
         structureScore: qualityAnalysis.structureScore,
-        sentiment: sentimentAnalysis.sentiment,
-        confidence: sentimentAnalysis.confidence,
+        sentiment: 'neutral', // Default sentiment since we removed sentiment analysis
+        confidence: 0.7, // Default confidence
         fillerWords: fillerAnalysis,
         speechPace: paceAnalysis,
         strengths: qualityAnalysis.strengths,

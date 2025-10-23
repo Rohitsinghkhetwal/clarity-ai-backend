@@ -1,9 +1,24 @@
+import axios from "axios";
+import fs from "fs"
+import path from "path";
+import { fileURLToPath } from "url";
+
+
 import InterviewModel from "../models/interviewsession.model.js"
 import questionModel from "../models/question.model.js"
 import aiservice from "../services/aiservice.js"
 import ttosrvservice from "../services/ttosrvservice.js"
 import storageService from "../services/storageService.js"
-import fs from 'fs'
+import analysisService from "../services/analysisService.js"
+
+
+
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
+
+// const VOICE_ID = process.env.VOICE_ID
+// const API_KEY = process.env.ELEVENLABS_API_KEY
+
 
 const startInterview = async (req, res) => {
   try {
@@ -57,12 +72,12 @@ const startInterview = async (req, res) => {
 
     // Generate audio for first question
     const firstQuestion = session.questions[0];
-    const { audioUrl } = await generateQuestionAudio(
-      firstQuestion.questionText,
-      session._id.toString()
-    );
-    console.log("AUDIO URL", audioUrl)
-    firstQuestion.audioUrl = audioUrl;
+    // const { audioUrl } = await generateQuestionAudio(
+    //   firstQuestion.questionText,
+    //   session._id.toString()
+    // );
+    // console.log("AUDIO URL", audioUrl)
+    // firstQuestion.audioUrl = audioUrl;
     await session.save();
 
     res.status(201).json({
@@ -238,19 +253,40 @@ const getUserHistory = async (req, res) => {
   }
 };
 
+
 // Helper functions
+
+
 async function generateQuestionAudio(questionText, sessionId) {
   console.log("THIS IS INSIDE THE GENERATE AUDIO ", questionText,sessionId)
   try {
     const { filepath, fileName } = await ttosrvservice.generateSpeech(questionText, sessionId);
+    console.log("this is filepath", filepath)
+    console.log("this is fileName", fileName)
     const audioUrl = await storageService.uploadFile(filepath, fileName);
     console.log("Url", audioUrl)
-    fs.unlinkSync(filepath);
+    
+    // Clean up temp file
+    if (fs.existsSync(filepath)) {
+      fs.unlinkSync(filepath);
+      console.log("Temp file cleaned up:", filepath);
+    }
+    
     return { audioUrl };
   } catch (error) {
+    console.error("generateQuestionAudio Error:", error.message);
+    console.error("Full error:", error);
     return { audioUrl: null };
   }
 }
+
+
+
+
+
+
+
+
 
 function calculateOverallScores(questions) {
   // Same logic as in WebSocket handler

@@ -57,7 +57,7 @@ class AIServices {
 
     Return ONLY valid JSON, no other text.`;
 
-    const response = await this.openai.chat.completions.create({
+    const response = await this.groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
         {

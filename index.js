@@ -27,7 +27,7 @@ const io = new socketIo(server, {
   cors: {
     origin: process.env.FRONTEND_URL,
     methods: ['GET', 'POST'],
-    Credential: true,
+    credentials: true,
   },
   maxHttpBufferSize: 1e8 // 100 mb per audio chunk
 })

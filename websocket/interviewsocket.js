@@ -23,17 +23,37 @@ class InterviewSocketHandler {
 
       // Start recording
       socket.on('start-recording', async (data) => {
-        await this.handleStartRecording(socket, data);
+        try {
+          const sampleRate = Number(data?.sampleRate) || 44100;
+          await sttservices.start(socket, sampleRate);
+          socket.emit('recording-started', { success: true });
+        } catch (err) {
+          console.log("Error starting transcription", err);
+          socket.emit('error', { message: 'Failed to start transcription' });
+        }
       });
 
       // Audio stream chunks
-      socket.on('audio-chunk', async (data) => {
-        await this.handleAudioChunk(socket, data);
-      });
+      // socket.on('audio-chunk', async (data) => {
+      //   // await this.handleAudioChunk(socket, data);
+      //   sttservices.socket?.emit("audio-chunk", data)
+      // });
 
       // Stop recording
       socket.on('stop-recording', async (data) => {
-        await this.handleStopRecording(socket, data);
+        // await this.handleStopRecording(socket, data);
+        try {
+          if(sttservices) {
+            sttservices.stop();
+          }
+
+          socket.emit('recording-stopped', {success: true})
+
+        }catch(err) {
+          console.log("Error stoping the recording ")
+
+        }
+        // if(sttservices) sttservices.stop()
       });
 
       // Skip question
@@ -91,13 +111,19 @@ class InterviewSocketHandler {
   async handleStartRecording(socket, { sessionId }) {
     try {
       const connectionData = this.activeConnections.get(socket.id);
+      // console.log("THIS IS CONNECTION DATA HERE ", connectionData)
       if (!connectionData) {
+        console.log("ERROR emitted from backend => ")
         socket.emit('error', { message: 'Connection not found' });
         return;
       }
 
+      // console.log('LINE 6')
+
       // Initialize Deepgram live transcription
       const deepgramLive = await sttservices.createLiveTranscription();
+
+      // console.log("DEEPGRAM LIVE ", deepgramLive)
 
       // Store live connection
       connectionData.deepgramLive = deepgramLive;
@@ -105,20 +131,34 @@ class InterviewSocketHandler {
       connectionData.audioChunks = [];
       connectionData.transcription = '';
 
+      deepgramLive.on('open', () => {
+        console.log("Deepgram live connection opened ")
+      })
+
+      deepgramLive.on("close", () => {
+        console.log("Deep gram live connection closed ")
+      })
+
       // Handle transcription results
-      deepgramLive.on('transcript', (data) => {
-        const transcript = data.channel.alternatives[0].transcript;
+      console.log('line 7')
+      deepgramLive.on('transcriptReceived', (data) => {
+        const transcript = data?.channel?.alternatives?.[0]?.transcript || '';
+        console.log("THIS IS THE TRANSCRIPT ", transcript)
         
         if (transcript && transcript.trim().length > 0) {
           connectionData.transcription += transcript + ' ';
           
           // Send real-time transcription to client
           socket.emit('transcription-update', {
-            transcript: transcript,
-            isFinal: data.is_final
+            transcript,
+            isFinal: Boolean(data?.isFinal ?? data?.isFinal)
           });
         }
       });
+
+      console.log('line 8')
+
+
 
       deepgramLive.on('error', (error) => {
         console.error('Deepgram error:', error);
@@ -133,18 +173,54 @@ class InterviewSocketHandler {
   }
 
   async handleAudioChunk(socket, { audioData, sessionId }) {
-    console.log("Audio data here", audioData)
     try {
       const connectionData = this.activeConnections.get(socket.id);
+      // console.log("CONNECTION DATA ", connectionData)
       if (!connectionData || !connectionData.deepgramLive) {
         return;
       }
 
+      let chunk;
+
+      if(Buffer.isBuffer(audioData)) {
+        chunk = audioData 
+        console.log("audio data is already a buffer ")
+      } else if(typeof audioData === 'string') {
+        const base64 = audioData.startsWith('data:')
+        ? audioData.split(',')[1]
+        : audioData.includes('base64')
+        ? audioData.split('base64')[1]
+        : audioData
+        chunk = Buffer.from(base64, 'base64')
+      } else {
+        console.log("unsupported audio format ", typeof audioData)
+        return 
+      }
+
+      if(!chunk || chunk.length=== 0 ){
+        console.log("Empty audio chunk ")
+        return 
+
+      }
+
       // Store chunk for later processing
-      connectionData.audioChunks.push(audioData);
+      connectionData.audioChunks.push(chunk);
+
+      const readyState = connectionData.deepgramLive.getReadyState?.() || connectionData.deepgramLive.conn?.readyState
+
+      console.log("Deepgram connection state ", readyState)
+
+      if(readyState === 1) {
+        connectionData.deepgramLive.send(chunk);
+        console.log(`Sent ${chunk.length} bytes to deepgram `)
+      }else {
+        console.log(`Deep gram not ready ${readyState}`)
+      }
+
+      console.log("THIS IS THE CONNECTION DATA HERE  =====", connectionData)
 
       // Send to Deepgram for real-time transcription
-      connectionData.deepgramLive.send(audioData);
+      
     } catch (error) {
       console.error('Audio chunk error:', error);
     }
@@ -172,18 +248,10 @@ class InterviewSocketHandler {
       const session = await InterviewModel.findById(sessionId);
       const currentQuestion = session.questions[session.currentQuestionIndex];
 
-      // Combine audio chunks into a single buffer
-      const audioBuffer = Buffer.concat(
-        connectionData.audioChunks.map(chunk => Buffer.from(chunk))
-      );
+      // Combine audio chunks into a single buffer (optional: for upload)
+      const audioBuffer = Buffer.concat(connectionData.audioChunks);
 
-      // Upload audio to storage
-      const audioUrl = await storageService.uploadAudio(
-        audioBuffer,
-        `${sessionId}_q${session.currentQuestionIndex}.webm`
-      );
-
-      // Analyze the answer
+      // Analyze the answer using aggregated transcription
       const analysis = await analysisService.analyzeAnswer(
         currentQuestion,
         connectionData.transcription,
@@ -194,7 +262,9 @@ class InterviewSocketHandler {
       // Update session with answer and analysis
       session.questions[session.currentQuestionIndex].userAnswer = connectionData.transcription;
       session.questions[session.currentQuestionIndex].transcription = connectionData.transcription;
-      session.questions[session.currentQuestionIndex].audioUrl = audioUrl;
+      // Optionally upload audio and set audioUrl here in future
+      // const audioUrl = await storageService.uploadAudio(audioBuffer, `${sessionId}_q${session.currentQuestionIndex}.webm`);
+      // session.questions[session.currentQuestionIndex].audioUrl = audioUrl;
       session.questions[session.currentQuestionIndex].analysis = analysis;
       session.questions[session.currentQuestionIndex].answeredAt = new Date();
 
@@ -202,23 +272,13 @@ class InterviewSocketHandler {
       session.currentQuestionIndex += 1;
 
       if (session.currentQuestionIndex < session.questions.length) {
-        // Generate next question audio
         const nextQuestion = session.questions[session.currentQuestionIndex];
-        const { audioUrl: questionAudioUrl } = await this.generateQuestionAudio(
-          nextQuestion.questionText,
-          sessionId
-        );
-        nextQuestion.audioUrl = questionAudioUrl;
-
         await session.save();
 
         // Send next question
         socket.emit('answer-processed', {
           analysis,
-          nextQuestion: {
-            ...nextQuestion.toObject(),
-            audioUrl: questionAudioUrl
-          },
+          nextQuestion,
           questionNumber: session.currentQuestionIndex + 1,
           totalQuestions: session.questions.length
         });
@@ -257,6 +317,7 @@ class InterviewSocketHandler {
       if (!connectionData) return;
 
       const session = await InterviewModel.findById(sessionId);
+      console.log("SESSION INSIDE THE HANDLE SKIP DATA ", session)
       
       // Mark as skipped
       session.questions[session.currentQuestionIndex].userAnswer = '[Skipped]';

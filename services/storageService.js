@@ -17,6 +17,7 @@ class StorageService {
   }
 
   async uploadFile(filepath, fileName) {
+    console.log("this is inside upload file ", filepath, fileName)
     try {
       const fileContent = fs.readFileSync(filepath);
       

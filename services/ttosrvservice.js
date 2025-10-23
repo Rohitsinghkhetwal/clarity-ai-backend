@@ -15,6 +15,10 @@ class TTS_Service {
   }
 
   async generateSpeech(text, sessionId) {
+    console.log("INSIDE GENERATE SPEECH ")
+    console.log("API Key exists:", this.apiKey);
+    console.log("Voice ID:", this.voiceId);
+    
     try{
       const response = await axios.post(`https://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}`,
         {
@@ -35,8 +39,9 @@ class TTS_Service {
         }
       )
 
-      // console.log("text inside the genreeate speech", response.data)
-      // console.log('sessionId-=-=-=-=-=-=-', sessionId)
+       console.log("Response status:", response.status);
+       console.log("Response data length:", response.data.byteLength);
+       console.log('sessionId:', sessionId);
 
       const tempDir = path.join(__dirname, "../temp");
       if (!fs.existsSync(tempDir)) {
@@ -48,9 +53,10 @@ class TTS_Service {
       const fileName = `question_${sessionId}_${Date.now()}.mp3`;
       const filepath = path.join(tempDir, fileName)
       console.log('file name ', fileName)
-      console.log("file path=======================?", filepath)
+      console.log("file path:", filepath)
    
       fs.writeFileSync(filepath, response.data);
+      console.log("File written successfully");
 
       return {
         filepath,
@@ -58,7 +64,13 @@ class TTS_Service {
       }
 
     }catch(err) {
-      throw new Error(`Text to Speech Error ${err.message}`)
+      console.error("TTS Service Error Details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      });
+      throw new Error(`Text to Speech Error: ${err.message}`)
     }
   }
 
