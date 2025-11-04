@@ -67,16 +67,15 @@ class STTService {
       for await (const event of response.TranscriptResultStream) {
         if (event.TranscriptEvent) {
           const results = event.TranscriptEvent.Transcript.Results;
-          console.log("RESULT INSIDE THE HANDLE TRANSCRIPTION ", results)
 
           if (results.length > 0) {
             const text = results[0].Alternatives[0].Transcript;
             const isPartial = results[0].IsPartial;
-            
-            if (this.socket) {
+
+            if (!isPartial && text.trim()) {
               this.socket.emit("transcription", {
                 text,
-                isFinal: !isPartial
+                isFinal: true
               });
             }
           }

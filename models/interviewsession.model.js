@@ -24,7 +24,11 @@ const questionResponseSchema = new mongoose.Schema({
     speechPace: {
       wpm: Number,
       rating: String
-    }
+    },
+    strengths:[String],
+    weaknesses:[String],
+    suggestions: [String]
+
   },
   askedAt: Date,
   answeredAt: Date

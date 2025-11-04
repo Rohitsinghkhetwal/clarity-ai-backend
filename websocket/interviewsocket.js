@@ -317,7 +317,7 @@ class InterviewSocketHandler {
       if (!connectionData) return;
 
       const session = await InterviewModel.findById(sessionId);
-      console.log("SESSION INSIDE THE HANDLE SKIP DATA ", session)
+      // console.log("SESSION INSIDE THE HANDLE SKIP DATA ", session)
       
       // Mark as skipped
       session.questions[session.currentQuestionIndex].userAnswer = '[Skipped]';
@@ -404,19 +404,19 @@ class InterviewSocketHandler {
     const avgConfidence = validQuestions.reduce((sum, q) => 
       sum + (q.analysis.confidence || 0) * 10, 0) / validQuestions.length;
     
-    const avgCommunication = validQuestions.reduce((sum, q) => {
-      const fillerRate = q.analysis.fillerWords?.fillerRate || 0;
-      const commScore = analysisService.calculateCommunicationScore(
-        fillerRate,
-        q.analysis.speechPace?.rating || 'good',
-        q.analysis.confidence || 0.5
-      );
-      return sum + commScore;
-    }, 0) / validQuestions.length;
+    // const avgCommunication = validQuestions.reduce((sum, q) => {
+    //   const fillerRate = q.analysis.fillerWords?.fillerRate || 0;
+    //   // const commScore = analysisService.calculateCommunicationScore(
+    //   //   fillerRate,
+    //   //   q.analysis.speechPace?.rating || 'good',
+    //   //   q.analysis.confidence || 0.5
+    //   // );
+    //   return sum;
+    // }, 0) / validQuestions.length;
 
     const overall = (
       avgTechnical * 0.4 +
-      avgCommunication * 0.3 +
+      // avgCommunication * 0.3 +
       avgStructure * 0.2 +
       avgConfidence * 0.1
     );
@@ -425,7 +425,7 @@ class InterviewSocketHandler {
       overall: Math.round(overall * 10) / 10,
       breakdown: {
         technical: Math.round(avgTechnical * 10) / 10,
-        communication: Math.round(avgCommunication * 10) / 10,
+        // communication: Math.round(avgCommunication * 10) / 10,
         structure: Math.round(avgStructure * 10) / 10,
         confidence: Math.round(avgConfidence * 10) / 10
       }

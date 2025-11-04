@@ -1,17 +1,16 @@
 import Groq from "groq-sdk";
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 
 dotenv.config({
-  path: './config.env'
-})
-
+  path: "./config.env",
+});
 
 class AIServices {
   constructor() {
     this.groq = new Groq({
       apiKey: process.env.GROQ_SECRET_KEY,
     });
-    console.log("groq initiated success !")
+    console.log("groq initiated success !");
   }
 
   async generateQuestion(role, previousQuestions, userProfiles) {
@@ -22,7 +21,7 @@ class AIServices {
     Generate the next interview question that 
     1. Is relevant to ${role}
     2. Doesn't repeat previous topics
-    3. Matches ${userProfiles.experienceLevel} experienc level
+    3. Matches ${userProfiles.experienceLevel} experience level
     4. Is clear and specific
 
     Return only the question text , nothing else `;
@@ -40,7 +39,6 @@ class AIServices {
     return response.choices[0].message.content.trim();
   }
 
-  
   async analyzeAnswer(question, userAnswer, idealAnswer) {
     const prompt = `Analyze this interview answer:
     Question: ${question}
@@ -68,9 +66,49 @@ class AIServices {
         { role: "user", content: prompt },
       ],
       temperature: 0.3,
-      max_completion_tokens: 1024
+      max_completion_tokens: 1024,
     });
     return JSON.parse(response.choices[0].message.content);
+  }
+
+  async recieveResponse(userArray) {
+    try {
+      const response = await grok.chat.completions.create({
+        model: "llama-3.1-8b-instant",
+        message: [
+          {
+            role: "system",
+            content: `You are a JSON-only data formatter and analyzer.
+
+         You will receive an array of objects, where each object represents a question and its corresponding AI analysis (e.g., tone, confidence, score, etc.).
+
+         Your job is to:
+         1. Read all the objects in the array.
+         2. Calculate the overall/average values (e.g., average score, average confidence).
+         3. Summarize the candidate's overall performance in a concise way.
+         
+
+         Rules:
+         - Always return strictly valid JSON.
+         - Do NOT include any markdown, text, or explanation.
+         - Ensure numeric values are rounded to two decimal places.
+         `,
+          },
+          {
+            role: "user",
+            content: ` Analyze the following user data and return JSON with name, role, experienceLevel, and summary.
+            Return only valid JSON.
+            Data: 
+            ${JSON.stringify(userArray)}
+            `
+          }
+        ],
+      });
+      const output = JSON.parse(response.choices[0].message.content)
+      return output
+    } catch (err) {
+      console.log("Error !");
+    }
   }
 }
 
