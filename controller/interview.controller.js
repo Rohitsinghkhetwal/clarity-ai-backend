@@ -373,11 +373,13 @@ const responseFromLLm = async (req, res) => {
   const { sessionId } = req.body;
   try {
     const response = await InterviewModel.findOne({ _id: sessionId });
+    console.log("this is the response ", response)
     if (!response) {
       return res.status(400).json({ message: "Session Id is required !" });
     }
 
     const llmResponse = await aiservice.recieveResponse(response.questions);
+    console.log("this is the llm response here ==> ", llmResponse)
 
     if (!llmResponse) {
       return res.status(400).json({ message: "Something went wrong here !" });

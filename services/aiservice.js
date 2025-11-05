@@ -73,41 +73,75 @@ class AIServices {
 
   async recieveResponse(userArray) {
     try {
-      const response = await grok.chat.completions.create({
+      const response = await this.groq.chat.completions.create({
         model: "llama-3.1-8b-instant",
-        message: [
+        messages: [
           {
             role: "system",
-            content: `You are a JSON-only data formatter and analyzer.
+            content: `
+          You are an interview evaluator that returns strictly valid JSON.
 
-         You will receive an array of objects, where each object represents a question and its corresponding AI analysis (e.g., tone, confidence, score, etc.).
+          You will receive an array of interview question objects. Each object contains:
+          - questionText (string)
+          - userAnswer (string | null | undefined)
+          - analysis (object containing scoring details)
 
-         Your job is to:
-         1. Read all the objects in the array.
-         2. Calculate the overall/average values (e.g., average score, average confidence).
-         3. Summarize the candidate's overall performance in a concise way.
-         
+          Your evaluation MUST prioritize userAnswer text over analysis.
 
-         Rules:
-         - Always return strictly valid JSON.
-         - Do NOT include any markdown, text, or explanation.
-         - Ensure numeric values are rounded to two decimal places.
-         `,
-          },
-          {
-            role: "user",
-            content: ` Analyze the following user data and return JSON with name, role, experienceLevel, and summary.
-            Return only valid JSON.
-            Data: 
-            ${JSON.stringify(userArray)}
-            `
-          }
-        ],
+          Definition of "answered":
+          - userAnswer exists AND contains at least 5 meaningful words.
+
+          Process:
+          1. Filter the array to only include answered questions.
+          2. If **no questions were answered**:
+            Return the following JSON and do not evaluate anything else:
+
+            {
+              "overallScore": 0,
+              "communicationClarity": 0,
+              "responseQuality": 0,
+              "confidence": 0,
+              "tone": "not enough data",
+              "strengths": [],
+              "weaknesses": ["No answers were provided"],
+              "improvementAreas": ["Please answer the questions so we can evaluate your performance"]
+            }
+
+          3. If one or more questions were answered:
+            Evaluate ONLY the answered questions and compute:
+            - overallScore (0–10, two decimals)
+            - communicationClarity (0–100)
+            - responseQuality (0–100)
+            - confidence (0–100)
+            - tone (short phrase describing overall tone)
+            - strengths: 2–5 strengths derived from actual answers
+            - weaknesses: 2–5 weaknesses derived from actual answers
+            - improvementAreas: 2–5 practical suggestions for growth
+
+          Hard Rules:
+          - Return ONLY valid JSON.
+          - No markdown, no commentary, no explanations.
+          - Do NOT output per-question details.
+          - Round all numeric values to two decimals.
+          `,
+                    },
+
+                    {
+                      role: "user",
+                      content: `
+                  Evaluate the following interview data and return final aggregated scoring and feedback ONLY as JSON:
+
+                  ${JSON.stringify(userArray)}
+                  `,
+                    },
+                  ],
       });
-      const output = JSON.parse(response.choices[0].message.content)
-      return output
-    } catch (err) {
-      console.log("Error !");
+
+      const result = response.choices[0].message.content;
+      return JSON.parse(result);
+    } catch (error) {
+      console.error("AI Summary Error:", error);
+      throw new Error("AI summary generation failed");
     }
   }
 }
